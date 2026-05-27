@@ -67,6 +67,49 @@ write_default_config() {
         "$DEFAULT_LOG_MAX_LINES"
 }
 
+parse_query_string() {
+    local old_ifs pair key value
+    old_ifs="$IFS"
+    IFS='&'
+    for pair in $QUERY_STRING; do
+        IFS="$old_ifs"
+        key=${pair%%=*}
+        value=${pair#*=}
+        [ "$key" = "$pair" ] && value=""
+
+        case "$key" in
+            action)
+                case "$value" in
+                    status|config|log|save|default|restart) CGI_ACTION="$value" ;;
+                esac
+                ;;
+            ske)
+                is_numeric "$value" && CGI_SKE="$value"
+                ;;
+            kd)
+                is_numeric "$value" && CGI_KD="$value"
+                ;;
+            sfkd)
+                is_numeric "$value" && CGI_SFKD="$value"
+                ;;
+            skd)
+                is_numeric "$value" && CGI_SKD="$value"
+                ;;
+            spi)
+                is_numeric "$value" && CGI_SPI="$value"
+                ;;
+            vpi)
+                is_numeric "$value" && CGI_VPI="$value"
+                ;;
+            lml)
+                is_numeric "$value" && CGI_LML="$value"
+                ;;
+        esac
+        IFS='&'
+    done
+    IFS="$old_ifs"
+}
+
 status() {
     read_config
     local running=0
@@ -242,19 +285,7 @@ HELP
 # CGI 模式检测：Magisk HTTP 服务器通过 QUERY_STRING 传参
 if [ -n "$GATEWAY_INTERFACE" ] && [ -n "$QUERY_STRING" ]; then
     # 解析 QUERY_STRING (格式: action=xxx&key=val&...)
-    eval "$(echo "$QUERY_STRING" | awk -F'&' '{
-      for(i=1;i<=NF;i++){
-        split($i,a,"=");
-        if(a[1]=="action") printf "CGI_ACTION=%s ", a[2];
-        if(a[1]=="ske")    printf "CGI_SKE=%s ", a[2];
-        if(a[1]=="kd")     printf "CGI_KD=%s ", a[2];
-        if(a[1]=="sfkd")   printf "CGI_SFKD=%s ", a[2];
-        if(a[1]=="skd")    printf "CGI_SKD=%s ", a[2];
-        if(a[1]=="spi")    printf "CGI_SPI=%s ", a[2];
-        if(a[1]=="vpi")    printf "CGI_VPI=%s ", a[2];
-        if(a[1]=="lml")    printf "CGI_LML=%s ", a[2];
-      }
-    }')"
+    parse_query_string
 
     case "$CGI_ACTION" in
         status)

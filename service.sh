@@ -232,15 +232,16 @@ kill_wechat_non_push() {
             exit 0
         fi
 
+        if is_wechat_foreground; then
+            set_foreground_cooldown
+            log "[kill] kill前二次检测微信在前台，中断（已设冷却${FG_COOLDOWN_SECONDS}s）"
+            exit 0
+        fi
+
         log "[kill] 准备结束进程: $pids"
         for pid in $pids; do
             is_numeric "$pid" || continue
             [ "$pid" -le 500 ] && continue
-            if is_wechat_foreground; then
-                set_foreground_cooldown
-                log "[kill] kill前检测微信在前台，中断（已设冷却${FG_COOLDOWN_SECONDS}s）"
-                break
-            fi
             log "[kill] 执行 kill -9 PID=$pid"
             kill -9 "$pid" 2>/dev/null
             local ret=$?
@@ -325,6 +326,7 @@ monitor_screen_off() {
 
 RETRY_DELAY=5
 MAX_DELAY=120
+LISTEN_STABLE_SECONDS=60
 
 # 启动灭屏监听（后台）
 monitor_screen_off &
@@ -336,6 +338,7 @@ while true; do
     check_config_reload
     log "启动 logcat 监听 (重试间隔=${RETRY_DELAY}s)..."
 
+    LISTEN_START=$(date +%s)
     logcat -b events -s am_proc_start 2>>"$LOG_FILE" | while read -r line; do
         case "$line" in
             *com.tencent.mm*) ;;
@@ -372,11 +375,20 @@ while true; do
         ) &
     done
 
-    log "logcat 管道断开，${RETRY_DELAY}秒后重试..."
+    LISTEN_END=$(date +%s)
+    LISTEN_ELAPSED=$((LISTEN_END - LISTEN_START))
+    if [ "$LISTEN_ELAPSED" -ge "$LISTEN_STABLE_SECONDS" ]; then
+        RETRY_DELAY=5
+        log "logcat 管道断开（已稳定运行${LISTEN_ELAPSED}秒），${RETRY_DELAY}秒后重试..."
+    else
+        log "logcat 管道断开（运行${LISTEN_ELAPSED}秒），${RETRY_DELAY}秒后重试..."
+    fi
     sleep "$RETRY_DELAY"
 
-    RETRY_DELAY=$((RETRY_DELAY * 2))
-    [ "$RETRY_DELAY" -gt "$MAX_DELAY" ] && RETRY_DELAY="$MAX_DELAY"
+    if [ "$LISTEN_ELAPSED" -lt "$LISTEN_STABLE_SECONDS" ]; then
+        RETRY_DELAY=$((RETRY_DELAY * 2))
+        [ "$RETRY_DELAY" -gt "$MAX_DELAY" ] && RETRY_DELAY="$MAX_DELAY"
+    fi
 
     kill_wechat_non_push
 done

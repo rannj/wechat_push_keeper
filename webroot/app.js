@@ -124,6 +124,10 @@ function updateStatus(data) {
   if (!data) return
   var elMain = $('#sv-main')
   if (elMain) { elMain.textContent = data.running ? '运行中' : '已停止'; elMain.className = 'status-value ' + (data.running ? 'running' : 'stopped') }
+  var elLogSize = $('#sv-logsize')
+  if (elLogSize) {
+    elLogSize.textContent = '日志 ' + formatSize(data.log_size || 0) + ' / ' + (data.log_lines || 0) + ' 行'
+  }
 }
 
 function formatSize(bytes) {
@@ -339,11 +343,4 @@ document.addEventListener('DOMContentLoaded', function() {
     })
   }
 
-  // 日志自动滚动
-  var logContainer = $('#log-content')
-  if (logContainer) {
-    logContainer.addEventListener('DOMSubtreeModified', function() {
-      logContainer.scrollTop = logContainer.scrollHeight
-    })
-  }
 })
