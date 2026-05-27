@@ -3,3 +3,4 @@
 *.pid
 *.lock
 *.zip
+dist/

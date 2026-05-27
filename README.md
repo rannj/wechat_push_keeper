@@ -163,6 +163,11 @@ sh /data/adb/modules/wechat_push_keeper/service.sh &
 
 ## 📋 更新日志
 
+### v1.5.3
+- 修复 Windows 打包导致安装脚本 CRLF 换行，KernelSU/Magisk 刷写失败的问题
+- 新增 `.gitattributes`，强制脚本和模块配置文件使用 LF 换行
+- 优化 打包产物忽略规则，避免 `dist` 目录进入源码提交
+
 ### v1.5.2
 - 修复 action.sh CGI 参数解析使用 `eval` 的安全风险，改为白名单解析
 - 优化 logcat 监听断开后的重试策略，稳定运行后自动恢复初始重试间隔
